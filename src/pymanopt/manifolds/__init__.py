@@ -17,6 +17,7 @@ __all__ = [
     "SphereSubspaceComplementIntersection",
     "SphereSubspaceIntersection",
     "Stiefel",
+    "Stiefel_tilde",
     "Symmetric",
     "SymmetricPositiveDefinite",
     "UnitaryGroup",
