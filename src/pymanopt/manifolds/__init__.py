@@ -40,3 +40,4 @@ from .sphere import (
     SphereSubspaceIntersection,
 )
 from .stiefel import Stiefel
+from .stiefel_tilde import Stiefel_tilde
