@@ -1,50 +1,56 @@
-from __future__ import division
-
 import numpy as np
 import numpy.linalg as la
 
-from pymanopt.manifolds.manifold import Manifold
+from pymanopt.manifolds.manifold import RiemannianSubmanifold
 
-if not hasattr(__builtins__, "xrange"):
-    xrange = range
+class Stiefel_tilde(RiemannianSubmanifold):
+    r"""The Stiefel_tilde manifold.
 
+    The Stiefel_tilde manifold :math:`\St(n, p)` is the manifold of ``n x
+    p`` matrices with orthognal columns.
+    A point :math:`\vmX \in \widetilde{St}(n, p)` therefore satisfies the condition
+    :math:`\transp{\vmX}\vmX is diagonal`.
+    Points on the manifold are represented as arrays of shape ``(n, p)`` 
 
-class Stiefel_tilde(Manifold):
+    The metric is the usual Euclidean metric on :math:`\R^{n \times p}` which
+    turns :math:`\widetilde{St}(n, p)` into a Riemannian submanifold.
+
+    Args:
+        n: The number of rows.
+        p: The number of columns.
+
+    Note:
+        The computations of the projections and retraction can be found in [FMLBM2023]_.
+
     """
-    Factory class for the manifold of matrices with orthogonal columns. Initiation requires the dimensions
-    n, p to be specified. Optional argument k allows the user to optimize over
-    the product of k Stiefels.
 
-    Elements are represented as n x p matrices (if k == 1), and as k x n x p
-    matrices if k > 1.
-    """
+    def __init__(self, n: int, p: int, *):
+        self._n = n
+        self._p = p
 
-    def __init__(self, height, width):
         # Check that n is greater than or equal to p
-        if height < width or width < 1:
-            raise ValueError("Need n >= p >= 1. Values supplied were n = %d "
-                             "and p = %d." % (height, width))
-        # Set the dimensions of the Stiefel
-        self._n = height
-        self._p = width
-
-        # Set dimension
-        self._dim =  (self._n * self._p -
-                               0.5 * self._p * (self._p + 1))
+        if n < p or p < 1:
+            raise ValueError(
+                f"Need n >= p >= 1. Values supplied were n = {n} and p = {p}"
+            )
+        name = f"Stiefel tilde manifold St_tilde({n},{p})"
+        dimension = int((n * p - p * (p + 1) / 2))
+        super().__init__(name, dimension)
 
     @property
-    def dim(self):
-        return self._dim
+    def typical_dist(self):
+        return np.sqrt(self._p)
 
-    def __str__(self):
-        return "Manifold of matrices with orthognal columns St_tilde(%d, %d)" % (self._n, self._p)
+    def inner_product(self, point, tangent_vector_a, tangent_vector_b):
+        return np.tensordot(
+            tangent_vector_a, tangent_vector_b, axes=tangent_vector_a.ndim
+        )
 
-    
     def sym_tilde(self,M):
         return 0.5*(M+M.T) - np.diag(np.diag(M))
 
 
-    def proj_perp(self,X,Z):
+    def projection_to_normal(self,X,Z):
         p=X.shape[1]
         O = np.ones((p,p))
         D = np.sqrt(np.diag(np.diag((X.T@X))))
@@ -56,39 +62,32 @@ class Stiefel_tilde(Manifold):
         return Pi
 
     
-    def proj(self, X, U):
-        return U - self.proj_perp(X,U)
+    def projection(self, point, vector):
+        return vector - self.proj_perp(point,vector)
 
+    to_tangent_space = projection
 
-    # Retract to the manifold using a modified qr decomposition of X + G.
-    def retr(self, X, G):
-
-
-        # Calculate 'thin' qr decomposition of X + G
-        Q1,R1 = la.qr(X+G)
+    def retraction(self, point, tangent_vector):
+        Q1,R1 = la.qr(point+tangent_vector)
         d = np.diag(np.diag(R1))
         Q = Q1@d
         return Q
 
-    def norm(self, X, G):
-        # Norm on the tangent space of the Stiefel is simply the Euclidean
-        # norm.
-        return np.linalg.norm(G)
+    def norm(self, point, tangent_vector):
+        return np.linalg.norm(tangent_vector)
 
-    # Generate random point in the manifold using a modified qr decomposition of random normally distributed
-    # matrix.
-    def rand(self):
-        X = np.random.randn(self._n, self._p)
-        q, r = np.linalg.qr(X)
+    def random_point(self):
+        q, r = np.linalg.qr(np.random.randn(self._n, self._p))
         return q@np.diag(np.diag(r))
 
 
-    def transp(self, x1, x2, d):
-        return self.proj(x2, d)
+    def random_tangent_vector(self, point):
+        vector = np.random.normal(size=point.shape)
+        vector = self.projection(point, vector)
+        return vector / np.linalg.norm(vector)
 
-    def log(self, X, Y):
-        raise NotImplementedError
+    def transport(self, point_a, point_b, tangent_vector_a):
+        return self.projection(point_b, tangent_vector_a)
 
-
-    def pairmean(self, X, Y):
-        raise NotImplementedError
+    def zero_vector(self, point):
+        return np.zeros((self._n, self._p))
