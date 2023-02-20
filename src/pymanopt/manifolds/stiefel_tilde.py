@@ -24,7 +24,7 @@ class Stiefel_tilde(RiemannianSubmanifold):
 
     """
 
-    def __init__(self, n: int, p: int, *):
+    def __init__(self, n: int, p: int):
         self._n = n
         self._p = p
 
