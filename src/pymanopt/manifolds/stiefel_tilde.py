@@ -63,7 +63,7 @@ class Stiefel_tilde(RiemannianSubmanifold):
 
     
     def projection(self, point, vector):
-        return vector - self.proj_perp(point,vector)
+        return vector - self.projection_to_normal(point,vector)
 
     to_tangent_space = projection
 
